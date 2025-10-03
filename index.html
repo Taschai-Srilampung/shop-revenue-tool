@@ -1,0 +1,535 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>โปรแกรมคำนวณรายได้ร้าน</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.18); }
+        h1 { text-align: center; color: #333; margin-bottom: 18px; font-size: 24px; }
+        .section { margin-bottom: 20px; padding: 16px; background: #f8f9fa; border-radius: 8px; }
+        .section-title { font-size: 18px; font-weight: bold; color: #667eea; margin-bottom: 12px; }
+        .form-group { margin-bottom: 14px; }
+        label { display: block; margin-bottom: 6px; color: #555; font-weight: 500; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 10px 12px; border: 2px solid #e0e0e0; border-radius: 8px; font-size: 16px; transition: border-color 0.2s; }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { outline: none; border-color: #667eea; }
+        .input-with-unit { position: relative; }
+        .input-with-unit input { padding-right: 64px; }
+        .input-with-unit::after { content: 'บาท'; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #999; pointer-events: none; font-size: 14px; }
+        .employee-card { background: white; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 2px solid #e9eefc; position: relative; }
+        .employee-header { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+        .employee-name-input { flex: 1; }
+        .employee-fields { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+        .employee-field-label { font-size: 13px; color: #666; margin-bottom: 6px; }
+        .btn { padding: 10px 18px; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.18s; min-height: 44px; }
+        .btn-primary { background: #667eea; color: white; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(102,126,234,0.28); }
+        .btn-secondary { background: #6c757d; color: white; }
+        .btn-add { background: #17a2b8; color: white; width: 100%; padding: 10px; }
+        .btn-danger { background: #dc3545; color: white; padding: 0; width: 36px; height: 36px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:18px; }
+        .button-group { display:flex; gap:12px; margin-top: 18px; flex-wrap: wrap; }
+        .button-group .btn { flex:1; min-width: 140px; }
+        .result-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 18px; border-radius: 12px; margin-top: 20px; color: white; }
+        .result-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.18); }
+        .result-item:last-child { border-bottom: none; }
+        .profit-per-person { background: rgba(255,255,255,0.12); padding:12px; border-radius:8px; margin-top:12px; }
+        .date-selector { display:grid; grid-template-columns: 2fr 1fr 1fr; gap:8px; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 12px; background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .profit-names-section { background: #e3f2fd; padding: 12px; border-radius: 8px; margin-top: 12px; }
+        .profit-name-row { display:flex; gap:8px; margin-bottom:8px; align-items:center; }
+        .profit-name-row input { flex: 1; padding: 8px 10px; }
+        @media (max-width: 600px) {
+            .date-selector { grid-template-columns: 1fr; }
+            .employee-fields { grid-template-columns: 1fr; }
+            .button-group { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏪 คำนวณรายได้ร้าน</h1>
+
+        <div id="alertBox" style="display:none;" class="alert"></div>
+
+        <!-- รายรับ -->
+        <div class="section">
+            <div class="section-title">รายรับ</div>
+            <div class="form-group">
+                <label>รายรับ (เดือน)</label>
+                <div class="input-with-unit">
+                    <input type="text" id="income" inputmode="decimal" placeholder="กรอกตัวเลข" class="num-input">
+                </div>
+            </div>
+        </div>
+
+        <!-- รายจ่าย -->
+        <div class="section">
+            <div class="section-title">รายจ่าย</div>
+            
+            <div class="form-group">
+                <label>ค่าเช่า</label>
+                <div class="input-with-unit">
+                    <!-- เว้นไว้ให้กรอก (ไม่มี 0 อัตโนมัติ) -->
+                    <input type="text" id="rent" inputmode="decimal" placeholder="กรอกตัวเลข" class="num-input">
+                </div>
+            </div>
+
+            <!-- ค่าพนักงาน -->
+            <div class="form-group">
+                <label>ค่าพนักงาน (รวมเงินเดือน + ค่าคอม + วันหยุด)</label>
+                <div id="employeeList"></div>
+                <button class="btn btn-add" type="button" onclick="addEmployee()">+ เพิ่มพนักงาน</button>
+            </div>
+
+            <div class="form-group">
+                <label>ค่าเน็ต wifi</label>
+                <div class="input-with-unit">
+                    <input type="text" id="wifi" inputmode="decimal" class="num-input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ตำรวจ</label>
+                <div class="input-with-unit">
+                    <input type="text" id="police" inputmode="decimal" class="num-input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>ซื้อของเข้าร้าน</label>
+                <div class="input-with-unit">
+                    <!-- เว้นไว้ให้กรอก (ไม่มี 0 อัตโนมัติ) -->
+                    <input type="text" id="supplies" inputmode="decimal" placeholder="กรอกตัวเลข" class="num-input">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>อื่นๆ</label>
+                <div class="input-with-unit">
+                    <input type="text" id="other" inputmode="decimal" placeholder="0" class="num-input">
+                </div>
+            </div>
+        </div>
+
+        <!-- แบ่งกำไร -->
+        <div class="section">
+            <div class="section-title">แบ่งกำไร</div>
+            
+            <div class="form-group">
+                <label>เลือกเดือน/ปี (สำหรับคำนวณจำนวนวัน)</label>
+                <div class="date-selector">
+                    <select id="month"> 
+                        <option value="1">มกราคม</option>
+                        <option value="2">กุมภาพันธ์</option>
+                        <option value="3">มีนาคม</option>
+                        <option value="4">เมษายน</option>
+                        <option value="5">พฤษภาคม</option>
+                        <option value="6">มิถุนายน</option>
+                        <option value="7">กรกฎาคม</option>
+                        <option value="8">สิงหาคม</option>
+                        <option value="9">กันยายน</option>
+                        <option value="10">ตุลาคม</option>
+                        <option value="11">พฤศจิกายน</option>
+                        <option value="12">ธันวาคม</option>
+                    </select>
+                    <input type="number" id="year" value="" />
+                    <input type="number" id="daysInMonth" value="31" min="1" max="31" />
+                </div>
+                <small style="color:#666; display:block; margin-top:6px;">จำนวนวันคำนวณอัตโนมัติ (แก้ไขได้)</small>
+            </div>
+
+            <div class="profit-names-section">
+                <label style="margin-bottom: 10px; display:block;">แบ่งกำไรให้ใคร</label>
+                <div id="profitNamesList"></div>
+                <button class="btn btn-add" type="button" onclick="addProfitPerson()">+ เพิ่มคน</button>
+            </div>
+        </div>
+
+        <!-- ปุ่มควบคุม -->
+        <div class="button-group">
+            <button class="btn btn-primary" type="button" onclick="calculate()">คำนวณ</button>
+            <button class="btn btn-secondary" type="button" onclick="resetForm()">รีเซ็ต</button>
+        </div>
+
+        <!-- แสดงผลลัพธ์ -->
+        <div class="result-box" id="resultBox" style="display:none;">
+            <div class="result-item">
+                <span class="result-label">รายรับทั้งหมด:</span>
+                <span class="result-value" id="resultIncome">0.00 บาท</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">รวมค่าใช้จ่าย:</span>
+                <span class="result-value" id="resultExpense">0.00 บาท</span>
+            </div>
+            <div class="result-item">
+                <span class="result-label">คงเหลือ:</span>
+                <span class="result-value" id="resultProfit">0.00 บาท</span>
+            </div>
+            <div class="profit-per-person" id="profitPerPerson"></div>
+        </div>
+    </div>
+
+    <script>
+        /* --- ฟังก์ชันช่วยเหลือ: ฟอร์แมตตัวเลขและแปลงกลับ --- */
+        function formatMoneyDisplay(value) {
+            if (value === '' || value === null || isNaN(Number(value))) return '';
+            const num = Number(value);
+            return num.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+
+        function unformat(value) {
+            if (value === undefined || value === null) return '';
+            return value.toString().replace(/,/g, '').trim();
+        }
+
+        // ผูกการฟอร์แมตให้ input ที่มี class .num-input
+        function attachNumericFormatting(input) {
+            if (!input) return;
+            // on focus: เอา comma ออก ให้แก้ตัวเลขได้ง่าย
+            input.addEventListener('focus', (e) => {
+                const raw = unformat(e.target.value);
+                e.target.value = raw === '' ? '' : raw;
+            });
+            // on blur: ฟอร์แมตเป็น 2 ตำแหน่ง + comma
+            input.addEventListener('blur', (e) => {
+                const raw = unformat(e.target.value);
+                if (raw === '') {
+                    // ช่องที่อนุญาตให้เว้นว่างได้: income, rent, supplies, ค่าคอม, วันหยุด
+                    const id = e.target.id || '';
+                    const classes = e.target.className || '';
+                    const allowBlank = id === 'income' || id === 'rent' || id === 'supplies' ||
+                                       classes.indexOf('employee-commission') !== -1 ||
+                                       classes.indexOf('employee-holiday') !== -1;
+                    if (allowBlank) {
+                        e.target.value = '';
+                    } else {
+                        e.target.value = formatMoneyDisplay(0);
+                    }
+                    return;
+                }
+                // replace comma/space แล้วแปลงเป็นตัวเลข
+                const n = Number(raw.replace(/[^0-9.-]/g, ''));
+                if (isNaN(n)) {
+                    e.target.value = '';
+                } else {
+                    e.target.value = formatMoneyDisplay(n);
+                }
+            });
+            // on input: จำกัดให้ใส่ตัวเลข . , - เท่านั้น
+            input.addEventListener('input', (e) => {
+                const cleaned = e.target.value.replace(/[^\d\.\,-]/g, '');
+                if (cleaned !== e.target.value) e.target.value = cleaned;
+            });
+        }
+
+        /* --- Helpers --- */
+        function parseNumberFromInput(el) {
+            if (!el) return NaN;
+            const v = el.value || '';
+            const raw = v.toString().replace(/,/g, '').trim();
+            if (raw === '') return NaN;
+            const n = Number(raw);
+            return isNaN(n) ? NaN : n;
+        }
+
+        function showAlert(message, type='error') {
+            const alertBox = document.getElementById('alertBox');
+            alertBox.textContent = message;
+            alertBox.style.display = 'block';
+            if (type === 'success') {
+                alertBox.style.background = '#d4edda';
+                alertBox.style.color = '#155724';
+                alertBox.style.borderColor = '#c3e6cb';
+            } else {
+                alertBox.style.background = '#f8d7da';
+                alertBox.style.color = '#721c24';
+                alertBox.style.borderColor = '#f5c6cb';
+            }
+            setTimeout(hideAlert, 3000);
+        }
+        function hideAlert() { document.getElementById('alertBox').style.display = 'none'; }
+
+        /* --- Employee management --- */
+        let employeeCount = 0;
+        // default name='' so when adding new employee the name field is blank by default.
+        function addEmployee(name = '', salary = 12000, commission = '', holiday = '', isInitial = false) {
+            const employeeList = document.getElementById('employeeList');
+
+            const card = document.createElement('div');
+            card.className = 'employee-card';
+            card.dataset.index = employeeCount;
+
+            // header
+            const header = document.createElement('div');
+            header.className = 'employee-header';
+
+            const nameInput = document.createElement('input');
+            nameInput.type = 'text';
+            nameInput.placeholder = 'ชื่อพนักงาน';
+            nameInput.value = name || '';
+            nameInput.className = 'employee-name-input';
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn-danger';
+            removeBtn.title = 'ลบพนักงาน';
+            removeBtn.textContent = '×';
+            removeBtn.addEventListener('click', () => {
+                const cards = document.querySelectorAll('.employee-card');
+                if (cards.length <= 1) {
+                    showAlert('ต้องมีพนักงานอย่างน้อย 1 คน');
+                    return;
+                }
+                card.remove();
+            });
+
+            header.appendChild(nameInput);
+            header.appendChild(removeBtn);
+
+            // fields
+            const fields = document.createElement('div');
+            fields.className = 'employee-fields';
+
+            // เงินเดือน
+            const col1 = document.createElement('div');
+            const lbl1 = document.createElement('div'); lbl1.className='employee-field-label'; lbl1.textContent='เงินเดือน';
+            const wrap1 = document.createElement('div'); wrap1.className='input-with-unit';
+            const salaryInput = document.createElement('input');
+            salaryInput.type = 'text';
+            salaryInput.inputMode = 'decimal';
+            salaryInput.className = 'employee-salary num-input';
+            salaryInput.value = (salary !== '' && salary !== null) ? formatMoneyDisplay(salary) : '';
+            wrap1.appendChild(salaryInput);
+            col1.appendChild(lbl1); col1.appendChild(wrap1);
+
+            // ค่าคอม (เว้นไว้)
+            const col2 = document.createElement('div');
+            const lbl2 = document.createElement('div'); lbl2.className='employee-field-label'; lbl2.textContent='ค่าคอม';
+            const wrap2 = document.createElement('div'); wrap2.className='input-with-unit';
+            const commissionInput = document.createElement('input');
+            commissionInput.type = 'text';
+            commissionInput.inputMode = 'decimal';
+            commissionInput.className = 'employee-commission num-input';
+            commissionInput.placeholder = '(เว้นไว้ถ้าไม่มี)';
+            commissionInput.value = (commission !== '' && commission !== null) ? formatMoneyDisplay(commission) : '';
+            wrap2.appendChild(commissionInput);
+            col2.appendChild(lbl2); col2.appendChild(wrap2);
+
+            // วันหยุด (เว้นไว้)
+            const col3 = document.createElement('div');
+            const lbl3 = document.createElement('div'); lbl3.className='employee-field-label'; lbl3.textContent='วันหยุด';
+            const wrap3 = document.createElement('div'); wrap3.className='input-with-unit';
+            const holidayInput = document.createElement('input');
+            holidayInput.type = 'text';
+            holidayInput.inputMode = 'decimal';
+            holidayInput.className = 'employee-holiday num-input';
+            holidayInput.placeholder = '(เว้นไว้ถ้าไม่มี)';
+            holidayInput.value = (holiday !== '' && holiday !== null) ? formatMoneyDisplay(holiday) : '';
+            wrap3.appendChild(holidayInput);
+            col3.appendChild(lbl3); col3.appendChild(wrap3);
+
+            fields.appendChild(col1);
+            fields.appendChild(col2);
+            fields.appendChild(col3);
+
+            card.appendChild(header);
+            card.appendChild(fields);
+            employeeList.appendChild(card);
+
+            // ถ้าเป็นพนักงานเริ่มต้น (isInitial) ให้ปุ่มลบปิดใช้งาน (แต่ยังแก้ชื่อได้)
+            if (isInitial || document.querySelectorAll('.employee-card').length === 1) {
+                removeBtn.disabled = true;
+                removeBtn.style.opacity = '0.5';
+                removeBtn.title = 'พนักงานคนนี้ไม่สามารถลบได้';
+            } else {
+                removeBtn.disabled = false;
+                removeBtn.style.opacity = '1';
+                removeBtn.title = 'ลบพนักงาน';
+            }
+
+            // Attach numeric formatting handlers
+            card.querySelectorAll('.num-input').forEach(attachNumericFormatting);
+
+            employeeCount++;
+        }
+
+        /* --- Profit persons --- */
+        let profitPersonCount = 0;
+        function addProfitPerson(defaultName = '') {
+            const list = document.getElementById('profitNamesList');
+            const row = document.createElement('div');
+            row.className = 'profit-name-row';
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.placeholder = 'ชื่อ';
+            input.className = 'profit-person-name';
+            input.value = defaultName || '';
+
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn-danger';
+            btn.textContent = '×';
+            btn.addEventListener('click', () => {
+                const names = document.querySelectorAll('.profit-person-name');
+                if (names.length <= 1) {
+                    showAlert('ต้องมีอย่างน้อย 1 คนที่แบ่งกำไร');
+                    return;
+                }
+                row.remove();
+            });
+
+            row.appendChild(input);
+            row.appendChild(btn);
+            list.appendChild(row);
+            profitPersonCount++;
+        }
+
+        /* --- เดือน / วัน --- */
+        function setCurrentMonthYear() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear() + 543; // พ.ศ.
+            document.getElementById('month').value = month;
+            document.getElementById('year').value = year;
+        }
+        function updateDaysInMonth() {
+            const month = parseInt(document.getElementById('month').value) || 1;
+            let year = parseInt(document.getElementById('year').value) || new Date().getFullYear()+543;
+            if (year > 2500) year = year - 543;
+            const days = new Date(year, month, 0).getDate();
+            document.getElementById('daysInMonth').value = days;
+        }
+
+        /* --- คำนวณ --- */
+        function calculate() {
+            hideAlert();
+            const incomeEl = document.getElementById('income');
+            const income = parseNumberFromInput(incomeEl);
+            if (isNaN(income)) {
+                showAlert('กรุณากรอกรายรับ (เดือน)');
+                return;
+            }
+
+            const rent = parseNumberFromInput(document.getElementById('rent')) || 0;
+            const wifi = parseNumberFromInput(document.getElementById('wifi')) || 0;
+            const police = parseNumberFromInput(document.getElementById('police')) || 0;
+            const supplies = parseNumberFromInput(document.getElementById('supplies')) || 0;
+            const other = parseNumberFromInput(document.getElementById('other')) || 0;
+
+            // พนักงาน
+            let totalEmployeeCost = 0;
+            const cards = document.querySelectorAll('.employee-card');
+            cards.forEach(card => {
+                const sal = parseNumberFromInput(card.querySelector('.employee-salary')) || 0;
+                const com = parseNumberFromInput(card.querySelector('.employee-commission')) || 0;
+                const hol = parseNumberFromInput(card.querySelector('.employee-holiday')) || 0;
+                totalEmployeeCost += sal + com + hol;
+            });
+
+            const totalExpense = rent + totalEmployeeCost + wifi + police + supplies + other;
+            const profit = income - totalExpense;
+
+            // ชื่อคนแบ่งกำไร
+            const profitPersonNames = Array.from(document.querySelectorAll('.profit-person-name'))
+                .map(i => i.value.trim())
+                .filter(n => n !== '');
+
+            if (profitPersonNames.length === 0) {
+                showAlert('กรุณาระบุชื่อคนที่แบ่งกำไรอย่างน้อย 1 คน');
+                return;
+            }
+
+            const numPeople = profitPersonNames.length;
+            const daysInMonth = parseInt(document.getElementById('daysInMonth').value) || 30;
+
+            const profitPerPerson = profit / numPeople;
+            const profitPerDay = profitPerPerson / daysInMonth;
+
+            document.getElementById('resultIncome').textContent = formatMoneyDisplay(income) + ' บาท';
+            document.getElementById('resultExpense').textContent = formatMoneyDisplay(totalExpense) + ' บาท';
+            document.getElementById('resultProfit').textContent = formatMoneyDisplay(profit) + ' บาท';
+
+            // สร้าง HTML ผลลัพธ์แบ่งกำไร
+            const perBox = document.getElementById('profitPerPerson');
+            perBox.innerHTML = `<div style="font-weight:bold; margin-bottom:8px;">แบ่งกำไรต่อคน (${daysInMonth} วัน):</div>`;
+            profitPersonNames.forEach(name => {
+                const row = document.createElement('div');
+                row.style.display = 'flex';
+                row.style.justifyContent = 'space-between';
+                row.style.padding = '6px 0';
+                const left = document.createElement('div'); left.textContent = name + ':';
+                const right = document.createElement('div'); right.textContent = `${formatMoneyDisplay(profitPerPerson)} บาท (วันละ ${formatMoneyDisplay(profitPerDay)} บาท)`;
+                row.appendChild(left); row.appendChild(right);
+                perBox.appendChild(row);
+            });
+
+            document.getElementById('resultBox').style.display = 'block';
+        }
+
+        function resetForm() {
+            hideAlert();
+            document.getElementById('income').value = '';
+            document.getElementById('rent').value = ''; // เว้นว่างตาม request
+            document.getElementById('wifi').value = formatMoneyDisplay(641);
+            document.getElementById('police').value = formatMoneyDisplay(500);
+            document.getElementById('supplies').value = ''; // เว้นว่างตาม request
+            document.getElementById('other').value = formatMoneyDisplay(0);
+
+            // employees
+            document.getElementById('employeeList').innerHTML = '';
+            employeeCount = 0;
+            addEmployee('แก้ว', 12000, '', '', true);
+
+            // profit names
+            document.getElementById('profitNamesList').innerHTML = '';
+            profitPersonCount = 0;
+            addProfitPerson('ทัศน์');
+            addProfitPerson('รุ่ง');
+            addProfitPerson('นาย');
+
+            document.getElementById('resultBox').style.display = 'none';
+
+            setCurrentMonthYear();
+            updateDaysInMonth();
+
+            // attach formatting to main inputs
+            document.querySelectorAll('.num-input').forEach(attachNumericFormatting);
+        }
+
+        /* --- เริ่มต้นเมื่อโหลดหน้า --- */
+        window.onload = function() {
+            // สร้างพนักงานเริ่มต้น: แก้ว 12,000 (ยังคงมีแก้วเป็นคนแรก)
+            addEmployee('แก้ว', 12000, '', '', true);
+
+            // ค่า wifi/police default (แสดงเป็นฟอร์แมต)
+            document.getElementById('wifi').value = formatMoneyDisplay(641);
+            document.getElementById('police').value = formatMoneyDisplay(500);
+
+            // rent และ supplies เว้นว่างตามที่ขอ (ไม่ใส่ 0)
+            document.getElementById('rent').value = '';
+            document.getElementById('supplies').value = '';
+
+            // ค่าอื่นๆ เป็น 0 ตาม requirement
+            document.getElementById('other').value = formatMoneyDisplay(0);
+
+            // เพิ่มคนที่แบ่งกำไรเริ่มต้น
+            addProfitPerson('ทัศน์');
+            addProfitPerson('รุ่ง');
+            addProfitPerson('นาย');
+
+            // set เดือน/ปี และวันที่
+            setCurrentMonthYear();
+            updateDaysInMonth();
+
+            // attach formatting ให้ทุก input ที่มี class num-input
+            document.querySelectorAll('.num-input').forEach(attachNumericFormatting);
+
+            document.getElementById('month').addEventListener('change', updateDaysInMonth);
+            document.getElementById('year').addEventListener('change', updateDaysInMonth);
+        };
+    </script>
+</body>
+</html>
