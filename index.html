@@ -2,7 +2,7 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>โปรแกรมคำนวณรายได้ร้าน</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -29,7 +29,7 @@
         .btn-secondary { background: #6c757d; color: white; }
         .btn-add { background: #17a2b8; color: white; width: 100%; padding: 10px; }
         .btn-danger { background: #dc3545; color: white; padding: 0; width: 36px; height: 36px; border-radius: 50%; display:flex; align-items:center; justify-content:center; font-size:18px; }
-        .button-group { display:flex; gap:12px; margin-top: 18px; flex-wrap: wrap; }
+        .button-group { display:flex; gap:12px; margin-top: 18px; flex-wrap: wrap; align-items:center; }
         .button-group .btn { flex:1; min-width: 140px; }
         .result-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 18px; border-radius: 12px; margin-top: 20px; color: white; }
         .result-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom: 1px solid rgba(255,255,255,0.18); }
@@ -48,7 +48,7 @@
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="pageRoot">
         <h1>🏪 คำนวณรายได้ร้าน</h1>
 
         <div id="alertBox" style="display:none;" class="alert"></div>
@@ -71,7 +71,7 @@
             <div class="form-group">
                 <label>ค่าเช่า</label>
                 <div class="input-with-unit">
-                    <!-- เว้นไว้ให้กรอก (ไม่มี 0 อัตโนมัติ) -->
+                    <!-- ค่าเริ่มต้น 61102 แต่ผู้ใช้แก้ได้ -->
                     <input type="text" id="rent" inputmode="decimal" class="num-input" value="61102">
                 </div>
             </div>
@@ -100,7 +100,6 @@
             <div class="form-group">
                 <label>ซื้อของเข้าร้าน</label>
                 <div class="input-with-unit">
-                    <!-- เว้นไว้ให้กรอก (ไม่มี 0 อัตโนมัติ) -->
                     <input type="text" id="supplies" inputmode="decimal" placeholder="กรอกตัวเลข" class="num-input">
                 </div>
             </div>
@@ -151,6 +150,16 @@
         <div class="button-group">
             <button class="btn btn-primary" type="button" onclick="calculate()">คำนวณ</button>
             <button class="btn btn-secondary" type="button" onclick="resetForm()">รีเซ็ต</button>
+
+            <!-- export controls: default target = ทั้งหน้า, user can choose pdf/jpg -->
+            <div style="display:flex; gap:8px; align-items:center; margin-left:8px;">
+              <select id="exportFormat" style="padding:8px 10px; border-radius:8px;">
+                <option value="pdf">PDF</option>
+                <option value="jpg">JPG</option>
+              </select>
+
+              <button id="exportBtn" class="btn btn-primary" type="button">ดาวน์โหลด</button>
+            </div>
         </div>
 
         <!-- แสดงผลลัพธ์ -->
@@ -170,6 +179,10 @@
             <div class="profit-per-person" id="profitPerPerson"></div>
         </div>
     </div>
+
+    <!-- libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <script>
         /* --- ฟังก์ชันช่วยเหลือ: ฟอร์แมตตัวเลขและแปลงกลับ --- */
@@ -196,7 +209,6 @@
             input.addEventListener('blur', (e) => {
                 const raw = unformat(e.target.value);
                 if (raw === '') {
-                    // ช่องที่อนุญาตให้เว้นว่างได้: income, rent, supplies, ค่าคอม, วันหยุด
                     const id = e.target.id || '';
                     const classes = e.target.className || '';
                     const allowBlank = id === 'income' || id === 'rent' || id === 'supplies' ||
@@ -209,7 +221,6 @@
                     }
                     return;
                 }
-                // replace comma/space แล้วแปลงเป็นตัวเลข
                 const n = Number(raw.replace(/[^0-9.-]/g, ''));
                 if (isNaN(n)) {
                     e.target.value = '';
@@ -219,7 +230,7 @@
             });
             // on input: จำกัดให้ใส่ตัวเลข . , - เท่านั้น
             input.addEventListener('input', (e) => {
-                const cleaned = e.target.value.replace(/[^\d\.\,-]/g, '');
+                const cleaned = e.target.value.replace(/[^\d\.,-]/g, '');
                 if (cleaned !== e.target.value) e.target.value = cleaned;
             });
         }
@@ -247,13 +258,12 @@
                 alertBox.style.color = '#721c24';
                 alertBox.style.borderColor = '#f5c6cb';
             }
-            setTimeout(hideAlert, 3000);
+            setTimeout(hideAlert, 2500);
         }
         function hideAlert() { document.getElementById('alertBox').style.display = 'none'; }
 
         /* --- Employee management --- */
         let employeeCount = 0;
-        // default name='' so when adding new employee the name field is blank by default.
         function addEmployee(name = '', salary = 12000, commission = '', holiday = '', isInitial = false) {
             const employeeList = document.getElementById('employeeList');
 
@@ -467,11 +477,14 @@
             });
 
             document.getElementById('resultBox').style.display = 'block';
+            // scroll to result
+            document.getElementById('resultBox').scrollIntoView({ behavior: 'smooth' });
         }
 
         function resetForm() {
             hideAlert();
             document.getElementById('income').value = '';
+            // ค่าเช่า default เป็น 61102 (แต่ผู้ใช้ยังสามารถแก้ได้)
             document.getElementById('rent').value = formatMoneyDisplay(61102);
             document.getElementById('wifi').value = formatMoneyDisplay(641);
             document.getElementById('police').value = formatMoneyDisplay(500);
@@ -499,6 +512,157 @@
             document.querySelectorAll('.num-input').forEach(attachNumericFormatting);
         }
 
+        /* --- Export helpers: clone + replace inputs for reliable capture --- */
+        function createCaptureClone(element) {
+            // clone node and replace form controls with plain divs that keep the visible value and styles
+            const wrapper = document.createElement('div');
+            wrapper.style.position = 'fixed';
+            wrapper.style.left = '-10000px';
+            wrapper.style.top = '0';
+            wrapper.style.zIndex = '9999';
+
+            const clone = element.cloneNode(true);
+
+            const originals = element.querySelectorAll('input, textarea, select');
+            const clones = clone.querySelectorAll('input, textarea, select');
+
+            // utility to copy a subset of computed styles
+            function copyStylesTo(elOut, computed) {
+                const props = ['width','height','padding-top','padding-right','padding-bottom','padding-left','font-size','font-family','font-weight','line-height','color','background-color','border','border-radius','box-sizing','text-align'];
+                props.forEach(p => {
+                    try {
+                        const v = computed.getPropertyValue(p);
+                        if (v) elOut.style.setProperty(p, v);
+                    } catch (e) {}
+                });
+                elOut.style.display = 'inline-block';
+                elOut.style.whiteSpace = 'pre-wrap';
+                elOut.style.overflowWrap = 'break-word';
+            }
+
+            clones.forEach((c,i) => {
+                const orig = originals[i];
+                let value = '';
+                if (!orig) return; // safety
+                if (orig.tagName.toLowerCase() === 'select') {
+                    value = orig.options[orig.selectedIndex] ? orig.options[orig.selectedIndex].text : '';
+                } else {
+                    value = orig.value || '';
+                }
+
+                const display = document.createElement('div');
+                display.textContent = value;
+
+                const computed = window.getComputedStyle(orig);
+                copyStylesTo(display, computed);
+
+                // ensure readable colors on white background
+                if (!display.style['background-color'] || display.style['background-color'] === 'transparent') {
+                    display.style['background-color'] = '#ffffff';
+                }
+                if (!display.style.color) display.style.color = '#000000';
+
+                // replace clone control with plain div
+                c.parentNode && c.parentNode.replaceChild(display, c);
+            });
+
+            wrapper.appendChild(clone);
+            document.body.appendChild(wrapper);
+            return wrapper;
+        }
+
+        async function generateCanvasFor(element) {
+            // create a temporary clone where inputs are replaced by plain text DIVs (so html2canvas renders values clearly)
+            const clonedWrapper = createCaptureClone(element);
+            // pick the cloned element inside wrapper
+            const clonedElement = clonedWrapper.firstElementChild;
+            // scale 2 for sharper result
+            const canvas = await html2canvas(clonedElement, { scale: 2, useCORS: true, backgroundColor: '#ffffff' });
+            // remove temporary clone
+            clonedWrapper.remove();
+            return canvas;
+        }
+
+        /* --- Export (single long page PDF / JPG) --- */
+        async function exportToPDF(element, filename = 'export.pdf') {
+            const canvas = await generateCanvasFor(element);
+            const imgData = canvas.toDataURL('image/png');
+
+            const { jsPDF } = window.jspdf || {};
+            // create single-page PDF sized exactly to the canvas (use px unit)
+            try {
+                const pdf = new jsPDF({ unit: 'px', format: [canvas.width, canvas.height] });
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
+                pdf.save(filename);
+            } catch (e) {
+                // fallback: convert to A4 with splitting if jsPDF doesn't support px unit
+                const pdf = new jsPDF({ unit: 'pt', format: 'a4' });
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pxToPt = pdfWidth / canvas.width;
+                const fullHeightPt = canvas.height * pxToPt;
+                if (fullHeightPt <= pdf.internal.pageSize.getHeight()) {
+                    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, fullHeightPt);
+                    pdf.save(filename);
+                } else {
+                    const sliceHeightPx = Math.floor(pdf.internal.pageSize.getHeight() / pxToPt);
+                    let y = 0;
+                    while (y < canvas.height) {
+                        const h = Math.min(sliceHeightPx, canvas.height - y);
+                        const tmpCanvas = document.createElement('canvas');
+                        tmpCanvas.width = canvas.width;
+                        tmpCanvas.height = h;
+                        tmpCanvas.getContext('2d').drawImage(canvas, 0, y, canvas.width, h, 0, 0, canvas.width, h);
+                        const tmpData = tmpCanvas.toDataURL('image/png');
+                        const hPt = h * pxToPt;
+                        pdf.addImage(tmpData, 'PNG', 0, 0, pdfWidth, hPt);
+                        y += h;
+                        if (y < canvas.height) pdf.addPage();
+                    }
+                    pdf.save(filename);
+                }
+            }
+        }
+
+        async function exportToJPG(element, filename = 'export.jpg') {
+            const canvas = await generateCanvasFor(element);
+            const data = canvas.toDataURL('image/jpeg', 0.95);
+            const link = document.createElement('a');
+            link.href = data;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const exportBtn = document.getElementById('exportBtn');
+            if (!exportBtn) return;
+
+            exportBtn.addEventListener('click', async () => {
+                // default target = entire page container
+                const target = 'page';
+                const format = document.getElementById('exportFormat').value;
+                const element = document.getElementById('pageRoot');
+
+                try {
+                    showAlert('กำลังสร้างไฟล์... โปรดรอสักครู่', 'success');
+                    const now = new Date();
+                    const ts = `${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}`;
+                    const filename = `${target}_${ts}.${format}`;
+
+                    if (format === 'pdf') {
+                        await exportToPDF(element, filename);
+                    } else {
+                        await exportToJPG(element, filename);
+                    }
+                    showAlert('ดาวน์โหลดเสร็จแล้ว', 'success');
+                } catch (err) {
+                    console.error(err);
+                    showAlert('เกิดข้อผิดพลาดขณะสร้างไฟล์', 'error');
+                }
+            });
+        });
+
         /* --- เริ่มต้นเมื่อโหลดหน้า --- */
         window.onload = function() {
             // สร้างพนักงานเริ่มต้น: แก้ว 12,000 (ยังคงมีแก้วเป็นคนแรก)
@@ -508,8 +672,15 @@
             document.getElementById('wifi').value = formatMoneyDisplay(641);
             document.getElementById('police').value = formatMoneyDisplay(500);
 
-            // rent และ supplies เว้นว่างตามที่ขอ (ไม่ใส่ 0)
-            document.getElementById('rent').value = formatMoneyDisplay(61102);
+            // ค่าเช่า default เป็น 61102 (ผู้ใช้ยังสามารถเปลี่ยนได้)
+            const rentEl = document.getElementById('rent');
+            if (rentEl && unformat(rentEl.value) === '') {
+                rentEl.value = formatMoneyDisplay(61102);
+            } else if (rentEl && unformat(rentEl.value) !== '') {
+                rentEl.value = formatMoneyDisplay(unformat(rentEl.value));
+            }
+
+            // supplies เว้นว่างตาม requirement
             document.getElementById('supplies').value = '';
 
             // ค่าอื่นๆ เป็น 0 ตาม requirement
@@ -525,7 +696,7 @@
             updateDaysInMonth();
 
             // attach formatting ให้ทุก input ที่มี class num-input
-            document.querySelectorAll('.num-input').forEach(attachNumericFormatting);
+            document.queryฅSelectorAll('.num-input').forEach(attachNumericFormatting);
 
             document.getElementById('month').addEventListener('change', updateDaysInMonth);
             document.getElementById('year').addEventListener('change', updateDaysInMonth);
