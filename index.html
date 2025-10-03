@@ -72,7 +72,7 @@
                 <label>ค่าเช่า</label>
                 <div class="input-with-unit">
                     <!-- เว้นไว้ให้กรอก (ไม่มี 0 อัตโนมัติ) -->
-                    <input type="text" id="rent" inputmode="decimal" placeholder="กรอกตัวเลข" class="num-input">
+                    <input type="text" id="rent" inputmode="decimal" class="num-input" value="61102">
                 </div>
             </div>
 
@@ -472,7 +472,7 @@
         function resetForm() {
             hideAlert();
             document.getElementById('income').value = '';
-            document.getElementById('rent').value = ''; // เว้นว่างตาม request
+            document.getElementById('rent').value = formatMoneyDisplay(61102);
             document.getElementById('wifi').value = formatMoneyDisplay(641);
             document.getElementById('police').value = formatMoneyDisplay(500);
             document.getElementById('supplies').value = ''; // เว้นว่างตาม request
@@ -509,7 +509,7 @@
             document.getElementById('police').value = formatMoneyDisplay(500);
 
             // rent และ supplies เว้นว่างตามที่ขอ (ไม่ใส่ 0)
-            document.getElementById('rent').value = '';
+            document.getElementById('rent').value = formatMoneyDisplay(61102);
             document.getElementById('supplies').value = '';
 
             // ค่าอื่นๆ เป็น 0 ตาม requirement
