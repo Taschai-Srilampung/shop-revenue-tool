@@ -199,41 +199,41 @@
 
         // ผูกการฟอร์แมตให้ input ที่มี class .num-input
         function attachNumericFormatting(input) {
-            if (!input) return;
-            // on focus: เอา comma ออก ให้แก้ตัวเลขได้ง่าย
-            input.addEventListener('focus', (e) => {
-                const raw = unformat(e.target.value);
-                e.target.value = raw === '' ? '' : raw;
-            });
-            // on blur: ฟอร์แมตเป็น 2 ตำแหน่ง + comma
-            input.addEventListener('blur', (e) => {
-                const raw = unformat(e.target.value);
-                if (raw === '') {
-                    const id = e.target.id || '';
-                    const classes = e.target.className || '';
-                    const allowBlank = id === 'income' || id === 'rent' || id === 'supplies' ||
-                                       classes.indexOf('employee-commission') !== -1 ||
-                                       classes.indexOf('employee-holiday') !== -1;
-                    if (allowBlank) {
-                        e.target.value = '';
-                    } else {
-                        e.target.value = formatMoneyDisplay(0);
-                    }
-                    return;
-                }
-                const n = Number(raw.replace(/[^0-9.-]/g, ''));
-                if (isNaN(n)) {
-                    e.target.value = '';
-                } else {
-                    e.target.value = formatMoneyDisplay(n);
-                }
-            });
-            // on input: จำกัดให้ใส่ตัวเลข . , - เท่านั้น
-            input.addEventListener('input', (e) => {
-                const cleaned = e.target.value.replace(/[^\d\.,-]/g, '');
-                if (cleaned !== e.target.value) e.target.value = cleaned;
-            });
+    if (!input) return;
+
+    // on focus: เอา comma ออก เพื่อให้แก้ง่าย
+    input.addEventListener('focus', (e) => {
+        const raw = unformat(e.target.value);
+        e.target.value = raw === '' ? '' : raw;
+        // เก็บตำแหน่งเคอร์เซอร์ไว้ (best-effort)
+        try { const pos = e.target.selectionStart; e.target.dataset.caret = pos; } catch (err) {}
+    });
+
+    // on blur: ฟอร์แมตเป็น 2 ตำแหน่ง + comma (ถ้าค่าไม่ว่าง)
+    input.addEventListener('blur', (e) => {
+        const raw = unformat(e.target.value);
+        if (raw === '') {
+            // ปล่อยเป็นค่าว่าง (บางช่องต้องการให้ว่างได้)
+            e.target.value = '';
+            return;
         }
+        // เอา comma ออกก่อน แล้วแปลงเป็น Number
+        const normalized = raw.replace(/,/g, '');
+        const n = Number(normalized);
+        if (isNaN(n)) {
+            e.target.value = '';
+        } else {
+            // formatMoneyDisplay ตั้งค่าให้ minimumFractionDigits:2 อยู่แล้ว
+            e.target.value = formatMoneyDisplay(n);
+        }
+    });
+
+    // on input: จำกัดตัวที่พิมพ์ได้ (แต่อนุญาต comma/dot) — ไม่ฟอร์แมตระหว่างพิมพ์
+    input.addEventListener('input', (e) => {
+        const cleaned = e.target.value.replace(/[^\d\.,-]/g, '');
+        if (cleaned !== e.target.value) e.target.value = cleaned;
+    });
+}
 
         /* --- Helpers --- */
         function parseNumberFromInput(el) {
@@ -696,7 +696,7 @@
             updateDaysInMonth();
 
             // attach formatting ให้ทุก input ที่มี class num-input
-            document.queryฅSelectorAll('.num-input').forEach(attachNumericFormatting);
+            document.querySelectorAll('.num-input').forEach(attachNumericFormatting);
 
             document.getElementById('month').addEventListener('change', updateDaysInMonth);
             document.getElementById('year').addEventListener('change', updateDaysInMonth);
